@@ -2,18 +2,15 @@
 
 import json
 
-import cartopy
 import cartopy.crs as ccrs
-import cartopy.feature
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import ticker
 from matplotlib.cm import ScalarMappable
 
-from compbench.figures.io import asset, finish
+from compbench.figures.io import finish
 
-cartopy.config["pre_existing_data_dir"] = asset("cartopy")
 VAR_TO_UNIT = {"u_component_of_wind": r"$\mathrm{m\,s^{-1}}$", "divergence": r"$\mathrm{s^{-1}}$"}
 BALANCED_VARS = list(VAR_TO_UNIT)
 

@@ -33,7 +33,6 @@ where = ["src"]
 "share/compbench/configs" = ["configs/benchmark.yaml", "configs/local.yaml", "configs/slurm.yaml"]
 "share/compbench/containers" = ["containers/compbench.toml"]
 "share/compbench/assets" = ["assets/startf", "assets/weights.nc"]
-"share/compbench/assets/cartopy/shapefiles/natural_earth/physical" = ["assets/cartopy/shapefiles/natural_earth/physical/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
