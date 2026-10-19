@@ -1,0 +1,19 @@
+workers: 1
+# CSCS Alps. Environment variables expand on the submit host.
+data_root: /capstor/scratch/cscs/${USER}/compbench/data/prepared
+output_root: /capstor/scratch/cscs/${USER}/compbench/results
+scratch_root: /capstor/scratch/cscs/${USER}/compbench/scratch
+scheduler:
+  account: CHANGE_ME
+  partition: preemptable
+  time: "04:00:00"
+  scaling_time: "01:00:00"
+  memory: 460000
+  scaling_memory: 460000
+  exclusive: true
+  requeue: true
+  array_concurrency: 4
+  array_size: 1000
+runtime:
+  # Install containers/compbench.toml as ~/.edf/compbench.toml, or use an absolute path.
+  environment: compbench

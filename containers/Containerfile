@@ -1,0 +1,28 @@
+FROM python:3.11.14-slim-bookworm
+ENV DEBIAN_FRONTEND=noninteractive \
+    OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1 \
+    MPLBACKEND=Agg MPLCONFIGDIR=/tmp/matplotlib \
+    PATH=/opt/compbench/compressor/bin:$PATH \
+    MGARD_LIBRARY_PATH=/opt/compbench/compressor/bin/libcompbench_mgard.so \
+    HPEZ_LIBRARY_PATH=/opt/compbench/compressor/bin/libcompbench_hpez.so
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential cmake git pkg-config gfortran libnetcdf-dev libnetcdff-dev \
+    poppler-utils libhdf5-dev libgsl-dev libzstd-dev patchelf ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /opt/compbench
+COPY pyproject.toml uv.lock ./
+RUN pip install --no-cache-dir uv==0.10.5 \
+    && uv export --frozen --no-dev --no-emit-project --no-hashes --format requirements-txt -o /tmp/requirements.txt \
+    && pip install --no-cache-dir -r /tmp/requirements.txt
+COPY containers ./containers
+COPY compressor ./compressor
+RUN BUILD_JOBS=4 bash containers/build_hpez.sh
+RUN BUILD_JOBS=4 bash compressor/build_mgard_x.sh
+RUN bash containers/build_lagranto.sh
+COPY README.md ./
+COPY src ./src
+COPY configs ./configs
+COPY assets ./assets
+RUN pip install --no-deps .
+ENTRYPOINT ["compbench"]
+CMD ["--help"]

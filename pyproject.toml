@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "compressionbenchmark"
+version = "0.2.0"
+description = "Weather and climate data compression benchmarks"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "ebcc",
+  "numpy>=2.3,<2.5", "scipy>=1.16", "pandas>=2.3", "xarray==2025.7.1",
+  "h5py>=3.14", "h5netcdf>=1.6", "netCDF4>=1.7", "hdf5plugin==6.0.0",
+  "matplotlib==3.10.3", "cartopy==0.24.1", "pyproj==3.7.1", "PyYAML>=6.0", "scikit-image>=0.26", "ldcpy==0.20",
+  "metpy>=1.7", "pyshtools>=4.13", "gcsfs>=2025.7", "zarr>=2.18,<3",
+  "cdsapi>=0.7.7", "dask[array]>=2025.7"
+]
+
+[tool.uv.sources]
+ebcc = { git = "https://github.com/spcl/EBCC.git", tag = "v0.2.0-draft" }
+
+[project.optional-dependencies]
+test = ["pytest>=8", "ruff>=0.12"]
+
+[project.scripts]
+compbench = "compbench.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.data-files]
+"share/compbench/configs" = ["configs/benchmark.yaml", "configs/local.yaml", "configs/slurm.yaml"]
+"share/compbench/containers" = ["containers/compbench.toml"]
+"share/compbench/assets" = ["assets/startf", "assets/weights.nc"]
+"share/compbench/assets/cartopy/shapefiles/natural_earth/physical" = ["assets/cartopy/shapefiles/natural_earth/physical/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

@@ -1,0 +1,12 @@
+.git
+.venv
+.codex
+.agents
+data
+results
+scratch
+benchmarks
+**/__pycache__
+**/*.o
+**/*.a
+compressor/bin

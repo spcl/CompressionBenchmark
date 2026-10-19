@@ -1,0 +1,12 @@
+# CSCS Alps Container Engine EDF. Install as ~/.edf/compbench.toml.
+# Build/import the native ARM64 image with containers/build_alps.sbatch.
+image = "${SCRATCH}/compbench.sqsh"
+mounts = ["/capstor", "/iopsstor"]
+workdir = "/opt/compbench"
+writable = true
+# srun supplies the complete command; do not prepend the image's compbench entrypoint.
+entrypoint = false
+
+[env]
+NVIDIA_VISIBLE_DEVICES = "void"
+PATH = "/opt/compbench/compressor/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"

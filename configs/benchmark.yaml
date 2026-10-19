@@ -1,0 +1,228 @@
+# Scientific benchmark settings; range-relative error targets are fractions of field range.
+schema_version: 1
+compressors:
+- ebcc
+- sz
+- sz3
+- hpez
+- sperr
+- mgard
+range_relative_error_targets:
+- 0.0001
+- 0.0005
+- 0.001
+- 0.005
+- 0.01
+- 0.05
+- 0.1
+random_seed: 0  # Reset EBCC random sampling before each encode for reproducibility.
+hpez:
+  level: 4
+  tuning_target: SSIM
+datasets:
+  source: gs://gcp-public-data-arco-era5/ar/full_37-1h-0p25deg-chunk-1.zarr-v3
+  variables:
+    z: geopotential
+    t: temperature
+    q: specific_humidity
+    u: u_component_of_wind
+    v: v_component_of_wind
+    w: vertical_velocity
+    u10: 10m_u_component_of_wind
+    v10: 10m_v_component_of_wind
+    t2m: 2m_temperature
+    msl: mean_sea_level_pressure
+  levels:
+  - 1000
+  - 975
+  - 950
+  - 925
+  - 900
+  - 875
+  - 850
+  - 825
+  - 800
+  - 775
+  - 750
+  - 700
+  - 650
+  - 600
+  - 550
+  - 500
+  - 450
+  - 400
+  - 350
+  - 300
+  - 250
+  - 225
+  - 200
+  - 175
+  - 150
+  - 125
+  - 100
+  - 70
+  - 50
+  - 30
+  - 20
+  - 10
+  - 7
+  - 5
+  - 3
+  - 2
+  - 1
+  rate_distortion:
+    sample:
+    - '2023-03-01T00:00:00'
+    full:
+      start: '2023-01-01'
+      stop: '2024-01-01'
+      step_hours: 1
+  case_study_hurricane:
+    time: '2020-11-16T18:00:00'
+    variables:
+      u:
+      - 850
+      - 1000
+      v:
+      - 850
+      t2m: []
+    region:
+    - 266
+    - 286
+    - 4
+    - 24
+  energy_budget_closure:
+    full:
+      start: '2016-08-01'
+      stop: '2016-11-01'
+      step_hours: 3
+      members:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      - 7
+      - 8
+      - 9
+      grid_degrees: 0.5
+    sample:
+      start: '2016-09-01'
+      stop: '2016-09-07'
+      step_hours: 6
+      members:
+      - 0
+      - 1
+      grid_degrees: 0.5
+      window_days: 2
+  trajectory_simulation:
+    start: '2011-03-12T00:00:00'
+    full:
+      hours: 144
+      members:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      - 7
+      - 8
+      - 9
+      particle_stride: 1  # Use every starting particle.
+    sample:
+      hours: 24
+      members:
+      - 0
+      - 1
+      particle_stride: 100  # Use rows 0, 100, 200, ...: 353 of 35,298 particles.
+    step_hours: 3
+    grid_degrees: 0.5
+    pressure_variables:
+    - u
+    - v
+    - w
+    surface_variables:
+    - sp
+    # Starting particles: time offset (hours), longitude, latitude, pressure (hPa).
+    initial_particles_file: trajectory_simulation/startf
+    density_region:
+    - 120
+    - 260
+    - 20
+    - 80
+    density_bins:
+    - 600
+    - 257
+kappa_study:  # Balance the base and residual layers by varying kappa.
+  pressure_levels: [1000, 850, 500, 200]
+  kappa_values:
+  - 0.5625
+  - 1.125
+  - 1.5
+  - 2.25
+  - 2.5
+  - 3
+  - 4.5
+  - 9
+  range_relative_error_targets:
+  - 0.0001
+  - 0.001
+  - 0.0017782794100389228
+  - 0.0031622776601683794
+  - 0.005623413251903491
+  - 0.01
+  - 0.01778279410038923
+  - 0.03162277660168379
+  - 0.05623413251903491
+  - 0.1
+quantization_residual:  # Base quantization and residual representation.
+  pressure_levels: [1000, 850, 500, 200]
+  range_relative_error_targets:
+  - 0.001
+  - 0.0017782794100389228
+  - 0.0031622776601683794
+  - 0.005623413251903491
+  - 0.01
+  - 0.01778279410038923
+  - 0.03162277660168379
+  - 0.05623413251903491
+  - 0.1
+error_statistics:
+  pressure_levels: [1000, 850, 500, 200]
+  ratios:
+  - 10
+  - 20
+  - 50
+  - 100
+weak_scaling:
+  ranks:
+  - 1
+  - 2
+  - 4
+  - 8
+  - 16
+  - 32
+  - 64
+  - 128
+  - 256
+  - 512
+  - 1024
+  sample_ranks:
+  - 1
+  - 2
+  - 4
+  repeats: 3
+  ranks_per_node: 256
+residual_layer_ablation:
+  size: 257
+  sigma: 0.05
+  bound: 0.05
+  kappa: 0.0274658203125
+  wavelet_bounds:
+  - 0.025
+  - 0.05
+  - 251

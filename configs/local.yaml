@@ -1,0 +1,4 @@
+workers: 4
+data_root: ./data/prepared
+output_root: ./results
+scratch_root: ./scratch

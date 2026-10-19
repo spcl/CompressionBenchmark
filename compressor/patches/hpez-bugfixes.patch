@@ -1,0 +1,212 @@
+diff --git a/include/QoZ/api/impl/SZInterp.hpp b/include/QoZ/api/impl/SZInterp.hpp
+--- a/include/QoZ/api/impl/SZInterp.hpp
++++ b/include/QoZ/api/impl/SZInterp.hpp
+@@ -641,14 +641,14 @@
+ 
+     for (size_t i = 0; i < N; i++) {
+         if ( max_interp_level < ceil(log2(conf.dims[i]))) {
+-             max_interp_level = (uint) ceil(log2(conf.dims[i]));
++             max_interp_level = (QoZ::uint) ceil(log2(conf.dims[i]));
+         }
+                 
+     }
+     
+     if (conf.maxStep>0){
+         anchor_rate=1/(pow(conf.maxStep,N));   
+-        int temp_max_interp_level=(uint)log2(conf.maxStep);//to be catious: the max_interp_level is different from the ones in szinterpcompressor, which includes the level of anchor grid.
++        int temp_max_interp_level=(QoZ::uint)log2(conf.maxStep);//to be catious: the max_interp_level is different from the ones in szinterpcompressor, which includes the level of anchor grid.
+         if (temp_max_interp_level<=max_interp_level){                  
+             max_interp_level=temp_max_interp_level;
+         }
+@@ -695,7 +695,7 @@
+         conf.autoTuningRate=0.0;
+     }
+     else{
+-        int max_lps_level=(uint)log2(conf.sampleBlockSize);//to be catious: the max_interp_level is different from the ones in szinterpcompressor, which includes the level of anchor grid.
++        int max_lps_level=(QoZ::uint)log2(conf.sampleBlockSize);//to be catious: the max_interp_level is different from the ones in szinterpcompressor, which includes the level of anchor grid.
+ 
+         if (conf.levelwisePredictionSelection>max_lps_level)
+             conf.levelwisePredictionSelection=max_lps_level;
+diff --git a/include/QoZ/compressor/SZGeneralCompressor.hpp b/include/QoZ/compressor/SZGeneralCompressor.hpp
+--- a/include/QoZ/compressor/SZGeneralCompressor.hpp
++++ b/include/QoZ/compressor/SZGeneralCompressor.hpp
+@@ -41,7 +41,7 @@
+             }
+ 
+             encoder.preprocess_encode(quant_inds, 0);
+-            size_t bufferSize = 1.5 * (frontend.size_est() + encoder.size_est() + sizeof(T) * quant_inds.size());//todo: lower the 1.5.
++            size_t bufferSize = 1.5 * (frontend.size_est() + encoder.size_est() + sizeof(T) * quant_inds.size() + QoZ::Config::size_est());
+             uchar *buffer = new uchar[bufferSize];
+             uchar *buffer_pos = buffer;
+ 
+@@ -52,6 +52,11 @@
+             encoder.save(buffer_pos);
+             encoder.encode(quant_inds, buffer_pos);
+             encoder.postprocess_encode();
++            if ((buffer_pos - buffer >= bufferSize)) {
++                printf("buffer size estimation is NOT sufficient.\n");
++                printf("buffer size = %lu, actual size = %lu\n", bufferSize, buffer_pos - buffer);
++                exit(1);
++            }
+             assert(buffer_pos - buffer < bufferSize);
+ 
+             uchar *lossless_data = lossless.compress(buffer, buffer_pos - buffer, compressed_size);
+@@ -64,7 +69,7 @@
+             if(q_inds.size()>0)
+                 quant_inds=q_inds;
+           
+-            size_t bufferSize = 2 * quant_inds.size()*sizeof(T);//original is 3
++            size_t bufferSize = frontend.size_est() + encoder.size_est() + 3 * quant_inds.size() * sizeof(T) + QoZ::Config::size_est();
+             uchar *buffer = new uchar[bufferSize];
+             uchar *buffer_pos = buffer;
+ 
+diff --git a/include/QoZ/compressor/SZInterpolationCompressor.hpp b/include/QoZ/compressor/SZInterpolationCompressor.hpp
+--- a/include/QoZ/compressor/SZInterpolationCompressor.hpp
++++ b/include/QoZ/compressor/SZInterpolationCompressor.hpp
+@@ -539,7 +539,18 @@
+             //timer.start();
+             assert(quant_inds.size() == num_elements);
+             encoder.preprocess_encode(quant_inds, 0);
+-            size_t bufferSize = 1.2 * (quantizer.size_est() + encoder.size_est() + sizeof(T) * quant_inds.size());
++            // Calculate metadata size for fields written before quantizer/encoder
++            size_t metadataSize = N * sizeof(size_t) + sizeof(blocksize) + sizeof(interp_meta)
++                + sizeof(alpha) + sizeof(beta) + sizeof(maxStep)
++                + sizeof(levelwise_predictor_levels) + sizeof(conf.blockwiseTuning)
++                + sizeof(conf.fixBlockSize) + sizeof(conf.frozen_dim)
++                + sizeof(cross_block) + sizeof(conf.regressiveInterp);
++            if (conf.blockwiseTuning) {
++                metadataSize += sizeof(size_t) + interp_metas.size() * sizeof(Interp_Meta);
++            } else if (levelwise_predictor_levels > 0) {
++                metadataSize += levelwise_predictor_levels * sizeof(Interp_Meta);
++            }
++            size_t bufferSize = 1.2 * (metadataSize + quantizer.size_est() + encoder.size_est() + sizeof(T) * quant_inds.size());
+             uchar *buffer = new uchar[bufferSize];
+             uchar *buffer_pos = buffer;
+             write(global_dimensions.data(), N, buffer_pos);
+@@ -593,14 +604,14 @@
+ 
+             if(q_inds.size()>0)
+                 quant_inds=q_inds;
+-            size_t bufferSize = 2.5 * (quant_inds.size() * sizeof(T) + quantizer.size_est());//original is 3
++            encoder.preprocess_encode(quant_inds, 0);
++            size_t bufferSize = 3 * (quant_inds.size() * sizeof(int) + quantizer.size_est() + encoder.size_est());
+             uchar *buffer = new uchar[bufferSize];
+             uchar *buffer_pos = buffer;
+             quantizer.save(buffer_pos);
+             quantizer.clear();
+             quantizer.postcompress_data();
+             //timer.start();
+-            encoder.preprocess_encode(quant_inds, 0);
+             encoder.save(buffer_pos);
+             encoder.encode(quant_inds, buffer_pos);
+             encoder.postprocess_encode();
+diff --git a/include/QoZ/encoder/HuffmanEncoder.hpp b/include/QoZ/encoder/HuffmanEncoder.hpp
+--- a/include/QoZ/encoder/HuffmanEncoder.hpp
++++ b/include/QoZ/encoder/HuffmanEncoder.hpp
+@@ -16,6 +16,7 @@
+ #include <unordered_map>
+ #include <unordered_set>
+ #include <set>
++#include <utility>
+ 
+ namespace QoZ {
+ 
+@@ -53,6 +54,59 @@
+                 sysEndianType = 0;
+             else //=0
+                 sysEndianType = 1;
++        }
++
++        HuffmanEncoder(const HuffmanEncoder &other) {
++            // This encoder owns raw heap pointers; copied instances should not share ownership.
++            huffmanTree = NULL;
++            treeRoot = nullptr;
++            nodeCount = 0;
++            loaded = false;
++            offset = T();
++            sysEndianType = other.sysEndianType;
++        }
++
++        HuffmanEncoder &operator=(const HuffmanEncoder &other) {
++            if (this == &other) return *this;
++            SZ_FreeHuffman();
++            huffmanTree = NULL;
++            treeRoot = nullptr;
++            nodeCount = 0;
++            loaded = false;
++            offset = T();
++            sysEndianType = other.sysEndianType;
++            return *this;
++        }
++
++        HuffmanEncoder(HuffmanEncoder &&other) noexcept {
++            huffmanTree = other.huffmanTree;
++            treeRoot = other.treeRoot;
++            nodeCount = other.nodeCount;
++            sysEndianType = other.sysEndianType;
++            loaded = other.loaded;
++            offset = std::move(other.offset);
++            other.huffmanTree = NULL;
++            other.treeRoot = nullptr;
++            other.nodeCount = 0;
++            other.loaded = false;
++            other.offset = T();
++        }
++
++        HuffmanEncoder &operator=(HuffmanEncoder &&other) noexcept {
++            if (this == &other) return *this;
++            SZ_FreeHuffman();
++            huffmanTree = other.huffmanTree;
++            treeRoot = other.treeRoot;
++            nodeCount = other.nodeCount;
++            sysEndianType = other.sysEndianType;
++            loaded = other.loaded;
++            offset = std::move(other.offset);
++            other.huffmanTree = NULL;
++            other.treeRoot = nullptr;
++            other.nodeCount = 0;
++            other.loaded = false;
++            other.offset = T();
++            return *this;
+         }
+ 
+         ~HuffmanEncoder() {
+@@ -294,7 +348,7 @@
+         unsigned int nodeCount = 0 ;
+         uchar sysEndianType; //0: little endian, 1: big endian
+         bool loaded = false;
+-        T offset;
++        T offset = T();
+ 
+ 
+         node reconstruct_HuffTree_from_bytes_anyStates(const unsigned char *bytes, uint nodeCount) {
+diff --git a/include/QoZ/lossless/Lossless_zstd.hpp b/include/QoZ/lossless/Lossless_zstd.hpp
+--- a/include/QoZ/lossless/Lossless_zstd.hpp
++++ b/include/QoZ/lossless/Lossless_zstd.hpp
+@@ -19,11 +19,13 @@
+ 
+         uchar *compress(uchar *data, size_t dataLength, size_t &outSize) {
+             size_t estimatedCompressedSize = (dataLength < 100 ? 200 : size_t(dataLength * 1.2)) + QoZ::Config::size_est();
++            size_t cSize = ZSTD_compressBound(dataLength) + sizeof(size_t) + QoZ::Config::size_est();
++            estimatedCompressedSize = std::max(estimatedCompressedSize, cSize);
+             uchar *compressBytes = new uchar[estimatedCompressedSize];
+             uchar *compressBytesPos = compressBytes;
+             write(dataLength, compressBytesPos);
+ 
+-            outSize = ZSTD_compress(compressBytesPos, estimatedCompressedSize, data, dataLength,
++            outSize = ZSTD_compress(compressBytesPos, estimatedCompressedSize - sizeof(size_t), data, dataLength,
+                                     compression_level);
+             outSize += sizeof(size_t);
+             return compressBytes;
+diff --git a/include/QoZ/utils/Config.hpp b/include/QoZ/utils/Config.hpp
+--- a/include/QoZ/utils/Config.hpp
++++ b/include/QoZ/utils/Config.hpp
+@@ -5,6 +5,8 @@
+ #include <iostream>
+ #include <vector>
+ #include <numeric>
++#include <cstdint>
++#include <array>
+ #include "QoZ/def.hpp"
+ #include "MemoryUtil.hpp"
+ #include "QoZ/utils/inih/INIReader.h"
