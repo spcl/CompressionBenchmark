@@ -107,9 +107,10 @@ figures from smaller datasets. Prepare the datasets first:
 uv run --locked compbench reproduce --tier sample --profile configs/local.yaml
 ```
 
-Use `--workflows NAME ...` to select a subset. For cluster runs, follow the
-[Alps setup instructions](docs/alps.md), edit [configs/slurm.yaml](configs/slurm.yaml),
-and preview a submission:
+Use `--workflows NAME ...` to select a subset. The current cluster configuration
+supports a container environment with Slurm on the Alps cluster and requires
+adjustments for other cluster environments. For cluster runs, edit
+[configs/slurm.yaml](configs/slurm.yaml) and preview a submission:
 
 ```bash
 uv run --locked compbench submit rate_distortion --tier full --profile configs/slurm.yaml --dry-run
